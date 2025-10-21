@@ -55,7 +55,14 @@ public class FileController : ControllerBase
             return StatusCode(507, "File Upload Failed");
         }
         
-        
+        try
+        {
+            CleanupOldFiles(path);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Warning: Failed to cleanup old files: {e.Message}"); // todo Change To Proper Logger
+        }
 
         return StatusCode(201, "Upload Successful");
     }
@@ -80,5 +87,31 @@ public class FileController : ControllerBase
         await using FileStream stream = System.IO.File.OpenRead(filePath);
         byte[] hash = await sha256.ComputeHashAsync(stream);
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+    }
+    
+    private void CleanupOldFiles(string directoryPath)
+    {
+        // Get max files from environment variable, default to 5
+        string? maxFilesEnv = Environment.GetEnvironmentVariable("API_UPLOAD_MAX_FILES");
+        int maxFiles = 5;
+        
+        if (maxFilesEnv is not null && int.TryParse(maxFilesEnv, out int parsedMaxFiles))
+        {
+            maxFiles = parsedMaxFiles;
+        }
+        
+        if (maxFiles <= 0)
+            return;
+        
+
+        DirectoryInfo dirInfo = new(directoryPath);
+        IEnumerable<FileInfo> files = dirInfo.GetFiles()
+            .OrderByDescending(f => f.CreationTime)
+            .ToList();
+        
+        if (files.Count() > maxFiles)
+        {
+           
+        }
     }
 }
