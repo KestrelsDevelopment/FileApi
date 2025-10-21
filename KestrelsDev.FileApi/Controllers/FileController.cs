@@ -9,7 +9,7 @@ namespace KestrelsDev.FileApi.Controllers;
 public class FileController(ILogger<FileController> logger) : ControllerBase
 {
     [HttpPost("upload")]
-    [RequestSizeLimit(10737418240)] // 10GB todo add Limit to dok
+    [RequestSizeLimit(10737418240)] // 10GB
     [RequestFormLimits(MultipartBodyLengthLimit = 10737418240)] // 10GB
     public async Task<ActionResult> Upload([FromForm]IFormFile file, [FromHeader]string? checksum, [FromHeader]string authorization)
     {
@@ -78,7 +78,7 @@ public class FileController(ILogger<FileController> logger) : ControllerBase
             return StatusCode(503, "ENV not set");
         
         if (!Directory.Exists(path))
-            return NotFound("Upload directory does not exist");
+            return StatusCode(503, "Upload directory does not exist");
         
         DirectoryInfo dirInfo = new(path);
         FileInfo[] files = dirInfo.GetFiles();
@@ -121,7 +121,7 @@ public class FileController(ILogger<FileController> logger) : ControllerBase
             return StatusCode(503, "ENV not set");
         
         if (!Directory.Exists(path))
-            return NotFound("Upload directory does not exist");
+            return StatusCode(503, "Upload directory does not exist");
         
         try
         {

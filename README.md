@@ -59,7 +59,7 @@ Download a file.
 
 **Responses:**
 - `200` - File content with range support
-- `404` - File or directory not found
+- `503` - File or directory not found
 - `500` - Error reading file
 - `503` - Server misconfigured
 
@@ -77,7 +77,7 @@ List all available files.
   }
   ]
   ```
-- `404` - Directory not found
+- `503` - Directory not found
 - `500` - Error listing files
 - `503` - Server misconfigured
 
