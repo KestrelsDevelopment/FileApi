@@ -9,7 +9,9 @@ namespace KestrelsDev.FileApi.Controllers;
 public class FileController : ControllerBase
 {
     [HttpPost("upload")]
-    public async Task<ActionResult> Upload([FromBody]IFormFile file, [FromHeader]string? checksum, [FromHeader]string authorization)
+    [RequestSizeLimit(10737418240)] // 10GB todo add Limit to dok
+    [RequestFormLimits(MultipartBodyLengthLimit = 10737418240)] // 10GB
+    public async Task<ActionResult> Upload([FromForm]IFormFile file, [FromHeader]string? checksum, [FromHeader]string authorization)
     {
         string? psk = Environment.GetEnvironmentVariable("API_UPLOAD_PSK");
         string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
@@ -26,7 +28,7 @@ public class FileController : ControllerBase
         if (checksum is not null)
         {
             string fileCheckSum = await CalculateChecksum(file);
-            if (fileCheckSum != checksum) 
+            if (!fileCheckSum.Equals(checksum, StringComparison.OrdinalIgnoreCase)) 
                 return BadRequest("Checksums do not match, File got Mangled in Transit");
             
             try
@@ -34,7 +36,7 @@ public class FileController : ControllerBase
                 if (System.IO.File.Exists(filePath))
                 {
                     string existingFileChecksum = await CalculateChecksumFromFile(filePath);
-                    if (existingFileChecksum == checksum)
+                    if (existingFileChecksum.Equals(checksum, StringComparison.OrdinalIgnoreCase))
                         return Ok("File Already Exists no Action Taken");
                 }
             }
@@ -91,7 +93,6 @@ public class FileController : ControllerBase
     
     private void CleanupOldFiles(string directoryPath)
     {
-        // Get max files from environment variable, default to 5
         string? maxFilesEnv = Environment.GetEnvironmentVariable("API_UPLOAD_MAX_FILES");
         int maxFiles = 5;
         
@@ -106,12 +107,16 @@ public class FileController : ControllerBase
 
         DirectoryInfo dirInfo = new(directoryPath);
         IEnumerable<FileInfo> files = dirInfo.GetFiles()
-            .OrderByDescending(f => f.CreationTime)
+            .OrderBy(f => f.CreationTime)
             .ToList();
         
         if (files.Count() > maxFiles)
         {
-           
+            foreach (FileInfo file in files.Take(files.Count() - maxFiles))
+            {
+                file.Delete();
+                // todo add logging
+            }
         }
     }
 }
