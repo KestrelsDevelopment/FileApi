@@ -6,7 +6,7 @@ namespace KestrelsDev.FileApi.Controllers;
 
 [ApiController]
 [Route("")]
-public class FileController : ControllerBase
+public class FileController(ILogger<FileController> logger) : ControllerBase
 {
     [HttpPost("upload")]
     [RequestSizeLimit(10737418240)] // 10GB todo add Limit to dok
@@ -42,7 +42,7 @@ public class FileController : ControllerBase
             }
             catch (Exception e)
             {
-                Console.WriteLine(e); // TODO TO CHANGE
+                logger.LogError("Error Checking for Existing File: {Error}", e);
             }
         }
         
@@ -63,7 +63,7 @@ public class FileController : ControllerBase
         }
         catch (Exception e)
         {
-            Console.WriteLine($"Warning: Failed to cleanup old files: {e.Message}"); // todo Change To Proper Logger
+            logger.LogWarning("Failed to cleanup old files: {Error}", e);
         }
 
         return StatusCode(201, "Upload Successful");
@@ -114,8 +114,15 @@ public class FileController : ControllerBase
         {
             foreach (FileInfo file in files.Take(files.Count() - maxFiles))
             {
-                file.Delete();
-                // todo add logging
+                try
+                {
+                    file.Delete();
+                    logger.LogInformation("Deleted File: {File}", file.FullName);
+                }
+                catch (Exception e)
+                {
+                    logger.LogError("Error Deleting File {File}: {Error}", file.FullName, e);
+                }
             }
         }
     }
