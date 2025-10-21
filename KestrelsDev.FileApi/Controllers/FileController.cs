@@ -69,10 +69,81 @@ public class FileController(ILogger<FileController> logger) : ControllerBase
         return StatusCode(201, "Upload Successful");
     }
     
-    [HttpGet("")]
-    public ActionResult Download()
+    [HttpGet("download")]
+    public ActionResult Download([FromQuery] string? fileName)
     {
-        return Ok();
+        string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
+        
+        if (path is null)
+            return StatusCode(503, "ENV not set");
+        
+        if (!Directory.Exists(path))
+            return NotFound("Upload directory does not exist");
+        
+        DirectoryInfo dirInfo = new(path);
+        FileInfo[] files = dirInfo.GetFiles();
+        
+        if (files.Length == 0)
+            return NotFound("No files available for download");
+        
+        FileInfo? fileToDownload;
+        
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            fileToDownload = files.OrderByDescending(f => f.CreationTime).First();
+        }
+        else
+        {
+            fileToDownload = files.FirstOrDefault(f => f.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
+            
+            if (fileToDownload is null)
+                return NotFound($"File '{fileName}' not found");
+        }
+        
+        try
+        {
+            Stream fileStream = new FileStream(fileToDownload.FullName, FileMode.Open, FileAccess.Read, FileShare.Read);
+            return File(fileStream, "application/octet-stream", fileToDownload.Name, enableRangeProcessing: true);
+        }
+        catch (Exception e)
+        {
+            logger.LogError("Error reading file {File}: {Error}", fileToDownload.FullName, e);
+            return StatusCode(500, "Error reading file");
+        }
+    }
+    
+    [HttpGet("list")]
+    public ActionResult List()
+    {
+        string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
+        
+        if (path is null)
+            return StatusCode(503, "ENV not set");
+        
+        if (!Directory.Exists(path))
+            return NotFound("Upload directory does not exist");
+        
+        try
+        {
+            DirectoryInfo dirInfo = new(path);
+            FileInfo[] files = dirInfo.GetFiles()
+                .OrderByDescending(f => f.CreationTime)
+                .ToArray();
+            
+            var fileList = files.Select(f => new
+            {
+                fileName = f.Name,
+                sizeMB = Math.Round(f.Length / (1024.0 * 1024.0), 2),
+                createdAt = f.CreationTime,
+            });
+            
+            return Ok(fileList);
+        }
+        catch (Exception e)
+        {
+            logger.LogError("Error listing files: {Error}", e);
+            return StatusCode(500, "Error listing files");
+        }
     }
     
     private async Task<string> CalculateChecksum(IFormFile file)
