@@ -1,23 +1,39 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
+# ---- Base runtime image ----
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+EXPOSE 80
+ENV ASPNETCORE_URLS=http://+:80
 
+# ---- Build image ----
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["KestrelsDev.FileApi/KestrelsDev.FileApi.csproj", "KestrelsDev.FileApi/"]
-RUN dotnet restore "KestrelsDev.FileApi/KestrelsDev.FileApi.csproj"
-COPY . .
-WORKDIR "/src/KestrelsDev.FileApi"
-RUN dotnet build "./KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
+# Copy just the project file first for better layer caching
+COPY ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"]
+
+# Restore using the correct path (fixed typo: FileAp -> FileApi)
+RUN dotnet restore "KestrelsDev.FileApi/KestrelsDev.FileApi.csproj"
+ 
+# Now copy the rest of the source
+COPY [".",  "./KestrelsDev.FileApi/"]
+
+# Build
+WORKDIR "/src/KestrelsDev.FileApi"
+RUN dotnet build "KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+# ---- Publish image ----
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
+# ---- Final image ----
 FROM base AS final
+
+# Create uploads folder (absolute path) and set env
+RUN mkdir -p /files
+ENV API_UPLOAD_PATH=/files
+
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "KestrelsDev.FileApi.dll"]
