@@ -1,0 +1,6 @@
+﻿services:
+  kestrelsdev.fileapi:
+    image: kestrelsdev.fileapi
+    build:
+      context: ./KestrelsDev.FileApi
+      dockerfile: ./Dockerfile
