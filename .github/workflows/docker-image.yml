@@ -1,0 +1,68 @@
+name: Build & Push all compose services to GHCR
+
+on:
+  push:
+    branches: [ "main" ]
+    tags: [ "v*" ]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  BUILD_COMPOSE: build-compose.yaml
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Generate a common tag set (branch, PR, semver, sha)
+      - name: Docker metadata (monorepo)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ghcr.io/${{ github.repository_owner }}/placeholder
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha
+
+      # Build & push all compose services with unified tags
+      - name: Build & push via Bake
+        uses: docker/bake-action@v4
+        with:
+          files: |
+            ${{ env.BUILD_COMPOSE }}
+          push: true
+          # Apply ghcr tags to all targets: service names become image names
+          set: |
+            *.tags=${{ join(fromJSON(steps.meta.outputs.json).tags, ',') }}
+            # Optionally override image names to ghcr
+            # For each service "svc", its image becomes ghcr.io/<owner>/<svc>
+            *.labels=org.opencontainers.image.source=${{ github.repository }}
+        env:
+          # Compose images are respected if present. If your compose has 'image: name',
+          # prefer changing them to ghcr.io/<owner>/<name>. Otherwise, you can override
+          # by adding service-specific lines like:
+          # <service>.tags=ghcr.io/<owner>/<service>:<tags>
+          DOCKER_BUILD_SUMMARY: false
