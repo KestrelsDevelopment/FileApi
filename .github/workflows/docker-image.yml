@@ -13,22 +13,47 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate build matrix from build-compose.yml
+        id: set-matrix
+        run: |
+          MATRIX=$(yq eval -o=json '.services | to_entries | map({
+            "service": .key,
+            "image": .value.image,
+            "context": .value.build.context,
+            "dockerfile": .value.build.dockerfile
+          })' build-compose.yml | jq -c '{"include": .}')
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Generated matrix:"
+          echo "$MATRIX" | jq '.'
+
   build-and-push:
+    needs: prepare
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    strategy:
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+      fail-fast: false
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract image name from build-compose.yml
-        id: extract-image
+      - name: Display build configuration
         run: |
-          IMAGE_NAME=$(yq eval '.services.*.image' build-compose.yml | head -n 1)
-          echo "image_name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-          echo "Using image: $IMAGE_NAME"
+          echo "Building service: ${{ matrix.service }}"
+          echo "Image: ${{ matrix.image }}"
+          echo "Context: ${{ matrix.context }}"
+          echo "Dockerfile: ${{ matrix.dockerfile }}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -47,7 +72,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.extract-image.outputs.image_name }}
+          images: ${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -59,8 +84,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./KestrelsDev.FileApi
-          file: ./KestrelsDev.FileApi/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.context }}/${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}

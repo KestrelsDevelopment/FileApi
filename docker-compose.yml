@@ -52,5 +52,5 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      o: bind
+      o: bind,size=55g
       device: ./files
