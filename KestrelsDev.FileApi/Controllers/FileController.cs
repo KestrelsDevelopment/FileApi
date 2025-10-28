@@ -1,200 +1,143 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿
+using KestrelsDev.FileApi.Models;
+using KestrelsDev.FileApi.Services.ConfigurationService;
+using KestrelsDev.FileApi.Services.FileStorageService;
+using KestrelsDev.FileApi.Services.AuthenticationService;
+using KestrelsDev.FileApi.Services.ChecksumService;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Cryptography;
 
 namespace KestrelsDev.FileApi.Controllers;
 
 [ApiController]
 [Route("")]
-public class FileController(ILogger<FileController> logger) : ControllerBase
+public class FileController(
+    ILogger<FileController> logger,
+    IConfigurationService configService,
+    IAuthenticationService authService,
+    IChecksumService checksumService,
+    IFileStorageService fileStorageService) : ControllerBase
 {
     [HttpPost("upload")]
     [RequestSizeLimit(10737418240)] // 10GB
     [RequestFormLimits(MultipartBodyLengthLimit = 10737418240)] // 10GB
-    public async Task<ActionResult> Upload([FromForm]IFormFile file, [FromHeader]string? checksum, [FromHeader]string authorization)
+    public async Task<ActionResult> Upload(
+        [FromForm] IFormFile file,
+        [FromHeader] string? checksum,
+        [FromHeader] string authorization)
     {
-        string? psk = Environment.GetEnvironmentVariable("API_UPLOAD_PSK");
-        string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
+        // Validate configuration
+        if (configService.UploadPath is null || configService.UploadPsk is null)
+            return StatusCode(503, "Server not configured properly");
         
-        if (psk is null || path is null) 
-            return StatusCode(503, "ENV not set");
-        
-        if (psk != authorization) 
-            return Unauthorized("Invalid PSK");
+        // Validate authentication
+        if (!authService.ValidateApiKey(authorization))
+            return Unauthorized("Invalid API key");
 
         string fileName = Path.GetFileName(file.FileName);
-        string filePath = Path.Combine(path, fileName);
         
+        // Validate checksum if provided
         if (checksum is not null)
         {
-            string fileCheckSum = await CalculateChecksum(file);
-            if (!fileCheckSum.Equals(checksum, StringComparison.OrdinalIgnoreCase)) 
-                return BadRequest("Checksums do not match, File got Mangled in Transit");
+            string fileCheckSum = await checksumService.CalculateChecksumAsync(file);
+            if (!checksumService.ChecksumsMatch(fileCheckSum, checksum))
+                return BadRequest("Checksums do not match, file corrupted in transit");
             
+            // Check if file already exists with same checksum
+            if (fileStorageService.FileExists(fileName))
+            {
+                try
+                {
+                    string filePath = Path.Combine(configService.UploadPath, fileName);
+                    string existingFileChecksum = await checksumService.CalculateChecksumFromFileAsync(filePath);
+                    if (checksumService.ChecksumsMatch(existingFileChecksum, checksum))
+                        return Ok("File already exists, no action taken");
+                }
+                catch (Exception e)
+                {
+                    logger.LogError(e, "Error checking existing file checksum");
+                }
+            }
+        }
+        
+        // Save the file
+        var (success, errorMessage) = await fileStorageService.SaveFileAsync(file, fileName);
+        if (!success)
+            return StatusCode(507, errorMessage ?? "File upload failed");
+        
+        // Cleanup old files (fire and forget)
+        _ = Task.Run(async () =>
+        {
             try
             {
-                if (System.IO.File.Exists(filePath))
-                {
-                    string existingFileChecksum = await CalculateChecksumFromFile(filePath);
-                    if (existingFileChecksum.Equals(checksum, StringComparison.OrdinalIgnoreCase))
-                        return Ok("File Already Exists no Action Taken");
-                }
+                await fileStorageService.CleanupOldFilesAsync();
             }
             catch (Exception e)
             {
-                logger.LogError("Error Checking for Existing File: {Error}", e);
+                logger.LogWarning(e, "Failed to cleanup old files");
             }
-        }
-        
-        try
-        {
-            await using FileStream fs = new(filePath, FileMode.Create);
-            await file.CopyToAsync(fs);
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e);
-            return StatusCode(507, "File Upload Failed");
-        }
-        
-        try
-        {
-            CleanupOldFiles(path);
-        }
-        catch (Exception e)
-        {
-            logger.LogWarning("Failed to cleanup old files: {Error}", e);
-        }
+        });
 
-        return StatusCode(201, "Upload Successful");
+        return StatusCode(201, "Upload successful");
     }
     
     [HttpGet("download")]
     public ActionResult Download([FromQuery] string? fileName)
     {
-        string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
+        if (configService.UploadPath is null)
+            return StatusCode(503, "Server not configured properly");
         
-        if (path is null)
-            return StatusCode(503, "ENV not set");
-        
-        if (!Directory.Exists(path))
+        if (!Directory.Exists(configService.UploadPath))
             return StatusCode(503, "Upload directory does not exist");
         
-        DirectoryInfo dirInfo = new(path);
-        FileInfo[] files = dirInfo.GetFiles();
+        FileInfo? fileToDownload = fileStorageService.GetFile(fileName);
         
-        if (files.Length == 0)
-            return NotFound("No files available for download");
-        
-        FileInfo? fileToDownload;
-        
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (fileToDownload is null)
         {
-            fileToDownload = files.OrderByDescending(f => f.CreationTime).First();
-        }
-        else
-        {
-            fileToDownload = files.FirstOrDefault(f => f.Name.Equals(fileName, StringComparison.OrdinalIgnoreCase));
-            
-            if (fileToDownload is null)
-                return NotFound($"File '{fileName}' not found");
+            return string.IsNullOrWhiteSpace(fileName)
+                ? NotFound("No files available for download")
+                : NotFound($"File '{fileName}' not found");
         }
         
         try
         {
-            Stream fileStream = new FileStream(fileToDownload.FullName, FileMode.Open, FileAccess.Read, FileShare.Read);
+            Stream fileStream = new FileStream(
+                fileToDownload.FullName,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read);
             return File(fileStream, "application/octet-stream", fileToDownload.Name, enableRangeProcessing: true);
         }
         catch (Exception e)
         {
-            logger.LogError("Error reading file {File}: {Error}", fileToDownload.FullName, e);
+            logger.LogError(e, "Error reading file {FileName}", fileToDownload.FullName);
             return StatusCode(500, "Error reading file");
         }
     }
     
     [HttpGet("list")]
-    public ActionResult List()
+    public ActionResult<IEnumerable<FileInfoDto>> List()
     {
-        string? path = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
+        if (configService.UploadPath is null)
+            return StatusCode(503, "Server not configured properly");
         
-        if (path is null)
-            return StatusCode(503, "ENV not set");
-        
-        if (!Directory.Exists(path))
+        if (!Directory.Exists(configService.UploadPath))
             return StatusCode(503, "Upload directory does not exist");
         
         try
         {
-            DirectoryInfo dirInfo = new(path);
-            FileInfo[] files = dirInfo.GetFiles()
-                .OrderByDescending(f => f.CreationTime)
-                .ToArray();
-            
-            var fileList = files.Select(f => new
-            {
-                fileName = f.Name,
-                sizeMB = Math.Round(f.Length / (1024.0 * 1024.0), 2),
-                createdAt = f.CreationTime,
-            });
+            var fileList = fileStorageService.GetAllFiles()
+                .Select(f => new FileInfoDto(
+                    f.Name,
+                    Math.Round(f.Length / (1024.0 * 1024.0), 2),
+                    f.CreationTime
+                ));
             
             return Ok(fileList);
         }
         catch (Exception e)
         {
-            logger.LogError("Error listing files: {Error}", e);
+            logger.LogError(e, "Error listing files");
             return StatusCode(500, "Error listing files");
-        }
-    }
-    
-    private async Task<string> CalculateChecksum(IFormFile file)
-    {
-        using SHA256 sha256 = SHA256.Create();
-        await using Stream stream = file.OpenReadStream();
-        byte[] hash = await Task.Run(() => sha256.ComputeHash(stream));
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-    }
-    
-    private async Task<string> CalculateChecksumFromFile(string filePath)
-    {
-        using SHA256 sha256 = SHA256.Create();
-        await using FileStream stream = System.IO.File.OpenRead(filePath);
-        byte[] hash = await sha256.ComputeHashAsync(stream);
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-    }
-    
-    private void CleanupOldFiles(string directoryPath)
-    {
-        string? maxFilesEnv = Environment.GetEnvironmentVariable("API_UPLOAD_MAX_FILES");
-        int maxFiles = 5;
-        
-        if (maxFilesEnv is not null && int.TryParse(maxFilesEnv, out int parsedMaxFiles))
-        {
-            maxFiles = parsedMaxFiles;
-        }
-        
-        if (maxFiles <= 0)
-            return;
-        
-
-        DirectoryInfo dirInfo = new(directoryPath);
-        IEnumerable<FileInfo> files = dirInfo.GetFiles()
-            .OrderBy(f => f.CreationTime)
-            .ToList();
-        
-        if (files.Count() > maxFiles)
-        {
-            foreach (FileInfo file in files.Take(files.Count() - maxFiles))
-            {
-                try
-                {
-                    file.Delete();
-                    logger.LogInformation("Deleted File: {File}", file.FullName);
-                }
-                catch (Exception e)
-                {
-                    logger.LogError("Error Deleting File {File}: {Error}", file.FullName, e);
-                }
-            }
         }
     }
 }
