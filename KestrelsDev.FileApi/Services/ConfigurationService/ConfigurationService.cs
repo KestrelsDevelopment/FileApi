@@ -6,7 +6,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfi
     public string? UploadPath => _uploadPath ??= ReadUploadPath();
 
     private string? _uploadPsk;
-    public string? UploadPsk => _uploadPsk ??= ReadUploadPsk();
+    public string UploadPsk => _uploadPsk ??= ReadUploadPsk();
 
     private int? _maxFiles;
     public int MaxFiles => _maxFiles ??= ReadMaxFiles();
@@ -26,7 +26,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfi
         return uploadPath;
     }
     
-    private string? ReadUploadPsk()
+    private string ReadUploadPsk()
     {
         string? uploadPsk = Environment.GetEnvironmentVariable("API_UPLOAD_PSK");
         if (string.IsNullOrWhiteSpace(uploadPsk))
