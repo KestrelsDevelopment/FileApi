@@ -26,7 +26,7 @@ public class FileController(
         [FromHeader] string authorization)
     {
         // Validate configuration
-        if (configService.UploadPath is null || configService.UploadPsk is null)
+        if (configService.UploadPath is null)
             return StatusCode(503, "Server not configured properly");
         
         // Validate authentication
