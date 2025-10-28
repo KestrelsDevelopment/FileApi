@@ -2,18 +2,22 @@ namespace KestrelsDev.FileApi.Services.ConfigurationService;
 
 public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfigurationService
 {
-    public string? UploadPath { get; } = ReadUploadPath(logger);
+    private string? _uploadPath;
+    public string? UploadPath => _uploadPath ??= ReadUploadPath();
 
-    public string? UploadPsk { get; } = ReadUploadPsk(logger);
+    private string? _uploadPsk;
+    public string? UploadPsk => _uploadPsk ??= ReadUploadPsk();
 
-    public int MaxFiles { get; } = ReadMaxFiles(logger);
+    private int? _maxFiles;
+    public int MaxFiles => _maxFiles ??= ReadMaxFiles();
 
-    private static string? ReadUploadPath(ILogger<ConfigurationService> logger)
+    private string? ReadUploadPath()
     {
         string? uploadPath = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
         if (string.IsNullOrWhiteSpace(uploadPath))
         {
-            logger.LogWarning("API_UPLOAD_PATH environment variable is not set");
+            logger.LogCritical("API_UPLOAD_PATH environment variable is not set");
+            Environment.Exit(1);
         }
         else
         {
@@ -22,12 +26,13 @@ public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfi
         return uploadPath;
     }
     
-    private static string? ReadUploadPsk(ILogger<ConfigurationService> logger)
+    private string? ReadUploadPsk()
     {
         string? uploadPsk = Environment.GetEnvironmentVariable("API_UPLOAD_PSK");
         if (string.IsNullOrWhiteSpace(uploadPsk))
         {
-            logger.LogWarning("API_UPLOAD_PSK environment variable is not set - authentication will fail");
+            logger.LogCritical("API_UPLOAD_PSK environment variable is not set - authentication will fail");
+            Environment.Exit(1);
         }
         else
         {
@@ -36,7 +41,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfi
         return uploadPsk;
     }
     
-    private static int ReadMaxFiles(ILogger<ConfigurationService> logger)
+    private int ReadMaxFiles()
     {
         string? maxFilesEnv = Environment.GetEnvironmentVariable("API_UPLOAD_MAX_FILES");
         if (maxFilesEnv is not null && int.TryParse(maxFilesEnv, out int parsedMaxFiles))
