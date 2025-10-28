@@ -1,0 +1,56 @@
+services:
+  api:
+    image: ghcr.io/kestrelsdevelopment/kestrelsdev.fileapi:latest
+    
+    # Security Options
+    user: "1000:1000"
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    
+    # Continer Configuration
+    environment:
+      - API_UPLOAD_PSK=${API_UPLOAD_PSK:?API_UPLOAD_PSK must be set}
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+    ports:
+      - 8080:80
+    volumes:
+      - apiFiles:/files
+      - /tmp
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        path: "./logs"
+
+volumes:
+  apiFiles:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./files
