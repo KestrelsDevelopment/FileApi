@@ -13,9 +13,10 @@ services:
     # Continer Configuration
     environment:
       - API_UPLOAD_PSK=${API_UPLOAD_PSK:?API_UPLOAD_PSK must be set}
+      - API_UPLOAD_PATH=/files
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
     ports:
-      - 8080:80
+      - "8080:80"
     volumes:
       - apiFiles:/files
       - /tmp

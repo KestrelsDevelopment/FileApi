@@ -60,7 +60,7 @@ public class FileController(
         }
         
         // Save the file
-        var (success, errorMessage) = await fileStorageService.SaveFileAsync(file, fileName);
+        (bool success, string? errorMessage) = await fileStorageService.SaveFileAsync(file, fileName);
         if (!success)
             return StatusCode(507, errorMessage ?? "File upload failed");
         
@@ -125,7 +125,7 @@ public class FileController(
         
         try
         {
-            var fileList = fileStorageService.GetAllFiles()
+            IEnumerable<FileInfoDto> fileList = fileStorageService.GetAllFiles()
                 .Select(f => new FileInfoDto(
                     f.Name,
                     Math.Round(f.Length / (1024.0 * 1024.0), 2),

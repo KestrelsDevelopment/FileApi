@@ -2,7 +2,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
 WORKDIR /app
 EXPOSE 80
-ENV ASPNETCORE_URLS=http://+:80
+ENV ASPNETCORE_URLS=http://0.0.0.0:80
 
 # ---- Build image ----
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
@@ -29,11 +29,9 @@ RUN dotnet publish "KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/
 
 # ---- Final image ----
 FROM base AS final
-
-# Create uploads folder (absolute path) and set env
-RUN mkdir -p /files
-ENV API_UPLOAD_PATH=/files
-
 WORKDIR /app
+
+# Copy the application
 COPY --from=publish /app/publish .
+
 ENTRYPOINT ["dotnet", "KestrelsDev.FileApi.dll"]
