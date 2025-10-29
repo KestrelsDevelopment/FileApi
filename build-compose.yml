@@ -4,3 +4,11 @@
     build:
       context: ./KestrelsDev.FileApi
       dockerfile: ./Dockerfile
+    environment:
+      - API_UPLOAD_PSK=changeme
+      - API_UPLOAD_PATH=/files
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+    volumes:
+      - ./files:/files
+    ports:
+      - "8080:80"
