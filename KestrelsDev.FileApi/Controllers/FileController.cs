@@ -5,6 +5,7 @@ using KestrelsDev.FileApi.Services.FileStorageService;
 using KestrelsDev.FileApi.Services.AuthenticationService;
 using KestrelsDev.FileApi.Services.ChecksumService;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.StaticFiles;
 
 namespace KestrelsDev.FileApi.Controllers;
 
@@ -17,6 +18,8 @@ public class FileController(
     IChecksumService checksumService,
     IFileStorageService fileStorageService) : ControllerBase
 {
+    private static readonly FileExtensionContentTypeProvider ContentTypeProvider = new();
+
     [HttpPost("upload")]
     [RequestSizeLimit(10737418240)] // 10GB
     [RequestFormLimits(MultipartBodyLengthLimit = 10737418240)] // 10GB
@@ -105,7 +108,14 @@ public class FileController(
                 FileMode.Open,
                 FileAccess.Read,
                 FileShare.Read);
-            return File(fileStream, "application/octet-stream", fileToDownload.Name, enableRangeProcessing: true);
+            
+            // Detect MIME type from file extension
+            if (!ContentTypeProvider.TryGetContentType(fileToDownload.Name, out string? contentType))
+            {
+                contentType = "application/octet-stream";
+            }
+            
+            return File(fileStream, contentType, fileToDownload.Name, enableRangeProcessing: true);
         }
         catch (Exception e)
         {
