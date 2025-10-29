@@ -9,15 +9,23 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
         logger.LogInformation("Calculating checksum for file: {FileName}, Size: {FileSize} bytes", 
             file.FileName, file.Length);
         
-        using SHA256 sha256 = SHA256.Create();
-        await using Stream stream = file.OpenReadStream();
-        byte[] hash = await Task.Run(() => sha256.ComputeHash(stream));
-        string checksum = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+        try
+        {
+            using SHA256 sha256 = SHA256.Create();
+            await using Stream stream = file.OpenReadStream();
+            byte[] hash = await Task.Run(() => sha256.ComputeHash(stream));
+            string checksum = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         
-        logger.LogInformation("Checksum calculated successfully for file: {FileName}, Checksum: {Checksum}", 
-            file.FileName, checksum);
+            logger.LogInformation("Checksum calculated successfully for file: {FileName}, Checksum: {Checksum}", 
+                file.FileName, checksum);
         
-        return checksum;
+            return checksum;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error calculating checksum for file: {FileName}", file.FileName);
+            return string.Empty;
+        }
     }
     
     public async Task<string> CalculateChecksumFromFileAsync(string filePath)
@@ -39,7 +47,7 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
         catch (Exception ex)
         {
             logger.LogError(ex, "Error calculating checksum for file: {FilePath}", filePath);
-            throw;
+            return string.Empty;
         }
     }
     
@@ -47,9 +55,17 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
     {
         bool match = checksum1.Equals(checksum2, StringComparison.OrdinalIgnoreCase);
         
-        logger.LogDebug("Comparing checksums - Match: {Match}, Checksum1: {Checksum1}, Checksum2: {Checksum2}", 
-            match, checksum1, checksum2);
-        
+        if (!match)
+        {
+            logger.LogWarning("Checksum mismatch detected - Checksum1: {Checksum1}, Checksum2: {Checksum2}", 
+                checksum1, checksum2);
+            
+        }
+        else
+        {
+            logger.LogDebug("Comparing checksums - Match: {Match}, Checksum1: {Checksum1}, Checksum2: {Checksum2}", 
+                match, checksum1, checksum2);
+        }
         return match;
     }
 }
