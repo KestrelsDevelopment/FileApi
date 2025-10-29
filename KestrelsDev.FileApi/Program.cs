@@ -1,23 +1,25 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using KestrelsDev.FileApi.Services.ConfigurationService;
+using KestrelsDev.FileApi.Services.AuthenticationService;
+using KestrelsDev.FileApi.Services.ChecksumService;
+using KestrelsDev.FileApi.Services.FileStorageService;
+
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddSingleton<KestrelsDev.FileApi.Services.ConfigurationService.IConfigurationService, 
-    KestrelsDev.FileApi.Services.ConfigurationService.ConfigurationService>();
+builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 
-builder.Services.AddScoped<KestrelsDev.FileApi.Services.AuthenticationService.IAuthenticationService, 
-    KestrelsDev.FileApi.Services.AuthenticationService.AuthenticationService>();
+builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
-builder.Services.AddScoped<KestrelsDev.FileApi.Services.ChecksumService.IChecksumService, 
-    KestrelsDev.FileApi.Services.ChecksumService.ChecksumService>();
+builder.Services.AddScoped<IChecksumService, ChecksumService>();
 
-builder.Services.AddScoped<KestrelsDev.FileApi.Services.FileStorageService.IFileStorageService, 
-    KestrelsDev.FileApi.Services.FileStorageService.FileStorageService>();
+builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
 WebApplication app = builder.Build();
 
 app.UseHttpsRedirection();
-
 
 app.MapControllers();
 
