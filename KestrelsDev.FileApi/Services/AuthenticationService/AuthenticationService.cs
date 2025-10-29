@@ -13,7 +13,7 @@ public class AuthenticationService(
         
         if (isValid)
         {
-            logger.LogInformation("API key validation successful");
+            logger.LogDebug("API key validation successful");
         }
         else
         {
