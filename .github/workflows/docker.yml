@@ -1,0 +1,21 @@
+name: "Docker Ci"
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    uses: KestrelsDevelopment/Workflows/.github/workflows/docker-build.yml@main
+    with:
+      build_compose_path: build-compose.yml
+      registry: ghcr.io
+      platforms: linux/amd64,linux/arm64
+    permissions:
+      contents: read
+      packages: write
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
