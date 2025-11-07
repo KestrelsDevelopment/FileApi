@@ -80,7 +80,7 @@ public class FileController(
             }
         });
 
-        return StatusCode(201, new { latesPath= "/download", exectPath= "/download?fileName=" + fileName});
+        return StatusCode(201, new { latestPath= "/download", exactPath= "/download?fileName=" + fileName});
     }
     
     [HttpGet("download")]
