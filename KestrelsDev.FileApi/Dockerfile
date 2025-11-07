@@ -1,11 +1,11 @@
 # ---- Base runtime image ----
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
+FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet9.runtime:latest AS base
 WORKDIR /app
 EXPOSE 80
 ENV ASPNETCORE_URLS=http://0.0.0.0:80
 
 # ---- Build image ----
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet9.sdk:latest AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 
