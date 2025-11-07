@@ -4,21 +4,20 @@ WORKDIR /app
 EXPOSE 80
 ENV ASPNETCORE_URLS=http://0.0.0.0:80
 
-# ---- Build image ----
 FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet9.sdk:latest AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+# switch to root to perform chown during copy (if the image isn't root already)
+USER root
 
-# Copy just the project file first for better layer caching
-COPY ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"]
-
-# Restore using the correct path (fixed typo: FileAp -> FileApi)
+# Copy with ownership for the builder user
+COPY --chown=builder:builder ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"]
 RUN dotnet restore "KestrelsDev.FileApi/KestrelsDev.FileApi.csproj"
- 
-# Now copy the rest of the source
-COPY [".",  "./KestrelsDev.FileApi/"]
 
-# Build
+COPY --chown=builder:builder [".",  "./KestrelsDev.FileApi/"]
+
+# drop privileges for the actual build if you want
+USER builder
 WORKDIR "/src/KestrelsDev.FileApi"
 RUN dotnet build "KestrelsDev.FileApi.csproj" -c $BUILD_CONFIGURATION -o /app/build
 

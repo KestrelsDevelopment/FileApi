@@ -16,7 +16,7 @@ services:
       - API_UPLOAD_PATH=/files
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
     ports:
-      - "8080:80"
+      - "80:80"
     volumes:
       - apiFiles:/files
       - /tmp

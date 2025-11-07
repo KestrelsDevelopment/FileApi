@@ -67,7 +67,7 @@ public class FileController(
         if (!success)
             return StatusCode(507, errorMessage ?? "File upload failed");
         
-        // Cleanup old files (fire and forget)
+        // Cleanup old files
         _ = Task.Run(async () =>
         {
             try
@@ -80,7 +80,7 @@ public class FileController(
             }
         });
 
-        return StatusCode(201, "Upload successful");
+        return StatusCode(201, new { latesPath= "/download", exectPath= "/download?fileName=" + fileName});
     }
     
     [HttpGet("download")]
