@@ -140,6 +140,7 @@ public class FileController(
                     f.Name,
                     Math.Round(f.Length / (1024.0 * 1024.0), 2),
                     f.Length,
+                    checksumService.CalculateChecksumFromFileAsync(f.FullName).Result,
                     f.CreationTime
                 ));
             

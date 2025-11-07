@@ -4,5 +4,6 @@ public record FileInfoDto(
     string FileName,
     double SizeMB,
     double sizeB,
+    string Checksum,
     DateTime CreatedAt
 );
