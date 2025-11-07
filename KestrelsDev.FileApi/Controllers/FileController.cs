@@ -139,6 +139,7 @@ public class FileController(
                 .Select(f => new FileInfoDto(
                     f.Name,
                     Math.Round(f.Length / (1024.0 * 1024.0), 2),
+                    f.Length,
                     f.CreationTime
                 ));
             
