@@ -46,7 +46,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-        path: "./logs"
 
 volumes:
   apiFiles:
@@ -54,4 +53,4 @@ volumes:
     driver_opts:
       type: none
       o: bind,size=55g
-      device: ./files
+      device: pathToStoreYourData
