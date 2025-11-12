@@ -152,4 +152,7 @@ public class FileController(
             return StatusCode(500, "Error listing files");
         }
     }
+    
+    [HttpGet("health")]
+    public ActionResult HealthCheck() => Ok();
 }
