@@ -8,16 +8,16 @@ ENV ASPNETCORE_URLS=http://0.0.0.0:80
 FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet9.sdk:latest AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-USER root
+#USER root
 
 # Copy in .csproj
-COPY ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"]
+COPY ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"] --chown=builder:builder
 
 # Restore
 RUN dotnet restore "KestrelsDev.FileApi/KestrelsDev.FileApi.csproj"
 
 # Copy in new files
-COPY [".",  "./KestrelsDev.FileApi/"]
+COPY [".",  "./KestrelsDev.FileApi/"] --chown=builder:builder
 
 # Build
 WORKDIR "/src/KestrelsDev.FileApi"
