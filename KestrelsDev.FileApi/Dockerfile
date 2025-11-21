@@ -11,13 +11,13 @@ WORKDIR /src
 #USER root
 
 # Copy in .csproj
-COPY ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"] --chown=builder:builder
+COPY  --chown=builder:builder ["./KestrelsDev.FileApi.csproj", "./KestrelsDev.FileApi/"]
 
 # Restore
 RUN dotnet restore "KestrelsDev.FileApi/KestrelsDev.FileApi.csproj"
 
 # Copy in new files
-COPY [".",  "./KestrelsDev.FileApi/"] --chown=builder:builder
+COPY --chown=builder:builder [".",  "./KestrelsDev.FileApi/"]
 
 # Build
 WORKDIR "/src/KestrelsDev.FileApi"
