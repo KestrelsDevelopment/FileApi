@@ -2,7 +2,6 @@
 using KestrelsDev.FileApi.Models;
 using KestrelsDev.FileApi.Services.ConfigurationService;
 using KestrelsDev.FileApi.Services.FileStorageService;
-using KestrelsDev.FileApi.Services.AuthenticationService;
 using KestrelsDev.FileApi.Services.ChecksumService;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.StaticFiles;
@@ -14,7 +13,6 @@ namespace KestrelsDev.FileApi.Controllers;
 public class FileController(
     ILogger<FileController> logger,
     IConfigurationService configService,
-    IAuthenticationService authService,
     IChecksumService checksumService,
     IFileStorageService fileStorageService) : ControllerBase
 {
@@ -32,10 +30,6 @@ public class FileController(
         if (configService.UploadPath is null)
             return StatusCode(503, "Server not configured properly");
         
-        // Validate authentication
-        if (!authService.ValidateApiKey(authorization))
-            return Unauthorized("Invalid API key");
-
         string fileName = Path.GetFileName(file.FileName);
         
         // Validate checksum if provided
