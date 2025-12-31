@@ -1,11 +1,11 @@
 # ---- Base runtime image ----
-FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet09.runtime-curl:latest AS base
+FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet10.runtime-curl:latest AS base
 WORKDIR /app
 EXPOSE 80
 ENV ASPNETCORE_URLS=http://0.0.0.0:80
 
 # ---- Build image ----
-FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet9.sdk:latest AS build
+FROM ghcr.io/kestrelsdevelopment/kestrelsdev.dotnet10.sdk:latest AS build
 ARG BUILD_CONFIGURATION=Release
 
 # Copy in .csproj
