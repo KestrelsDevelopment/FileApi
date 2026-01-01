@@ -11,7 +11,7 @@ builder.Services.AddControllers();
 
 builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 
-builder.Services.AddScoped<IChecksumService, ChecksumService>();
+builder.Services.AddSingleton<IChecksumService, ChecksumService>();
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 

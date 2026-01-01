@@ -1,5 +1,4 @@
-﻿
-using KestrelsDev.FileApi.Models;
+﻿using KestrelsDev.FileApi.Models;
 using KestrelsDev.FileApi.Services.ConfigurationService;
 using KestrelsDev.FileApi.Services.FileStorageService;
 using KestrelsDev.FileApi.Services.ChecksumService;
@@ -31,14 +30,15 @@ public class FileController(
             return StatusCode(503, "Server not configured properly");
         
         string fileName = Path.GetFileName(file.FileName);
-        
+        string? calculatedChecksum = null;
+    
         // Validate checksum if provided
         if (checksum is not null)
         {
-            string fileCheckSum = await checksumService.CalculateChecksumAsync(file);
-            if (!checksumService.ChecksumsMatch(fileCheckSum, checksum))
+            calculatedChecksum = await checksumService.CalculateChecksumAsync(file);
+            if (!checksumService.ChecksumsMatch(calculatedChecksum, checksum))
                 return BadRequest("Checksums do not match, file corrupted in transit");
-            
+        
             // Check if file already exists with same checksum
             if (fileStorageService.FileExists(fileName))
             {
@@ -60,7 +60,14 @@ public class FileController(
         (bool success, string? errorMessage) = await fileStorageService.SaveFileAsync(file, fileName);
         if (!success)
             return StatusCode(507, errorMessage ?? "File upload failed");
-        
+
+        // Cache the checksum we calculated earlier
+        if (calculatedChecksum is not null && configService.UploadPath is not null)
+        {
+            string savedFilePath = Path.Combine(configService.UploadPath, fileName);
+            checksumService.SetChecksum(savedFilePath, calculatedChecksum);
+        }
+    
         // Cleanup old files
         _ = Task.Run(async () =>
         {
