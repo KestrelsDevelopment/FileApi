@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using KestrelsDev.FileApi.Services.ConfigurationService;
 using KestrelsDev.FileApi.Services.ChecksumService;
 using KestrelsDev.FileApi.Services.FileStorageService;
