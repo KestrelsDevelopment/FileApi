@@ -1,5 +1,4 @@
-﻿
-using KestrelsDev.FileApi.Models;
+﻿using KestrelsDev.FileApi.Models;
 using KestrelsDev.FileApi.Services.ConfigurationService;
 using KestrelsDev.FileApi.Services.FileStorageService;
 using KestrelsDev.FileApi.Services.ChecksumService;
@@ -26,20 +25,18 @@ public class FileController(
         [FromHeader] string? checksum,
         [FromHeader] string authorization)
     {
-        // Validate configuration
         if (configService.UploadPath is null)
             return StatusCode(503, "Server not configured properly");
         
         string fileName = Path.GetFileName(file.FileName);
-        
-        // Validate checksum if provided
+        string? calculatedChecksum = null;
+
         if (checksum is not null)
         {
-            string fileCheckSum = await checksumService.CalculateChecksumAsync(file);
-            if (!checksumService.ChecksumsMatch(fileCheckSum, checksum))
+            calculatedChecksum = await checksumService.CalculateChecksumAsync(file);
+            if (!checksumService.ChecksumsMatch(calculatedChecksum, checksum))
                 return BadRequest("Checksums do not match, file corrupted in transit");
             
-            // Check if file already exists with same checksum
             if (fileStorageService.FileExists(fileName))
             {
                 try
@@ -56,12 +53,25 @@ public class FileController(
             }
         }
         
-        // Save the file
         (bool success, string? errorMessage) = await fileStorageService.SaveFileAsync(file, fileName);
         if (!success)
             return StatusCode(507, errorMessage ?? "File upload failed");
         
-        // Cleanup old files
+        if (configService.UploadPath is not null)
+        {
+            string finalChecksum = calculatedChecksum ?? await checksumService.CalculateChecksumFromFileAsync(Path.Combine(configService.UploadPath, fileName));
+
+            FileInfoDto newFileInfo = new FileInfoDto(
+                fileName,
+                Math.Round(file.Length / (1024.0 * 1024.0), 2),
+                file.Length,
+                finalChecksum,
+                DateTime.Now
+            );
+            
+            checksumService.AddOrUpdateFile(newFileInfo);
+        }
+
         _ = Task.Run(async () =>
         {
             try
@@ -103,7 +113,6 @@ public class FileController(
                 FileAccess.Read,
                 FileShare.Read);
             
-            // Detect MIME type from file extension
             if (!ContentTypeProvider.TryGetContentType(fileToDownload.Name, out string? contentType))
             {
                 contentType = "application/octet-stream";
@@ -121,30 +130,7 @@ public class FileController(
     [HttpGet("list")]
     public ActionResult<IEnumerable<FileInfoDto>> List()
     {
-        if (configService.UploadPath is null)
-            return StatusCode(503, "Server not configured properly");
-        
-        if (!Directory.Exists(configService.UploadPath))
-            return StatusCode(503, "Upload directory does not exist");
-        
-        try
-        {
-            IEnumerable<FileInfoDto> fileList = fileStorageService.GetAllFiles()
-                .Select(f => new FileInfoDto(
-                    f.Name,
-                    Math.Round(f.Length / (1024.0 * 1024.0), 2),
-                    f.Length,
-                    checksumService.CalculateChecksumFromFileAsync(f.FullName).Result,
-                    f.CreationTime
-                ));
-            
-            return Ok(fileList);
-        }
-        catch (Exception e)
-        {
-            logger.LogError(e, "Error listing files");
-            return StatusCode(500, "Error listing files");
-        }
+        return Ok(checksumService.GetCachedFiles());
     }
     
     [HttpGet("health")]

@@ -8,8 +8,8 @@
       "applicationUrl": "http://localhost:5190",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "API_UPLOAD_PSK": "",
-        "API_UPLOAD_PATH" : ""
+        "API_UPLOAD_PSK": "changeme",
+        "API_UPLOAD_PATH" : "/home/annika/RiderProjects/FileApi/files"
       }
     },
     "https": {

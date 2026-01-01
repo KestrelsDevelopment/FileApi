@@ -21,7 +21,7 @@ public interface IFileStorageService
     bool FileExists(string fileName);
     
     /// <summary>
-    /// Retrieves a file from the upload directory. If no filename is specified, returns the most recently created file.
+    /// Retrieves a file from the upload directory. If no filename is specified, it returns the most recently created file.
     /// </summary>
     /// <param name="fileName">The optional name of the file to retrieve. If <c>null</c> or empty, returns the newest file.</param>
     /// <returns>A <see cref="FileInfo"/> object representing the file, or <c>null</c> if not found or the directory doesn't exist.</returns>

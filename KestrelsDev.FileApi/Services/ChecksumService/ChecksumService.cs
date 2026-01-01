@@ -1,9 +1,13 @@
 namespace KestrelsDev.FileApi.Services.ChecksumService;
 
+using System.Collections.Concurrent;
 using System.Security.Cryptography;
+using Models;
 
 public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
 {
+    private readonly ConcurrentDictionary<string, FileInfoDto> _fileCache = new();
+
     public async Task<string> CalculateChecksumAsync(IFormFile file)
     {
         logger.LogInformation("Calculating checksum for file: {FileName}, Size: {FileSize} bytes", 
@@ -15,10 +19,7 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
             await using Stream stream = file.OpenReadStream();
             byte[] hash = await Task.Run(() => sha256.ComputeHash(stream));
             string checksum = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-        
-            logger.LogInformation("Checksum calculated successfully for file: {FileName}, Checksum: {Checksum}", 
-                file.FileName, checksum);
-        
+            
             return checksum;
         }
         catch (Exception ex)
@@ -30,19 +31,12 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
     
     public async Task<string> CalculateChecksumFromFileAsync(string filePath)
     {
-        logger.LogInformation("Calculating checksum from file path: {FilePath}", filePath);
-        
         try
         {
             using SHA256 sha256 = SHA256.Create();
             await using FileStream stream = File.OpenRead(filePath);
             byte[] hash = await sha256.ComputeHashAsync(stream);
-            string checksum = BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
-            
-            logger.LogInformation("Checksum calculated successfully for file: {FilePath}, Checksum: {Checksum}", 
-                filePath, checksum);
-            
-            return checksum;
+            return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
         catch (Exception ex)
         {
@@ -51,20 +45,35 @@ public class ChecksumService(ILogger<ChecksumService> logger) : IChecksumService
         }
     }
     
+    public void AddOrUpdateFile(FileInfoDto fileInfo)
+    {
+        _fileCache.AddOrUpdate(fileInfo.FileName, fileInfo, (_, _) => fileInfo);
+        logger.LogDebug("Cache updated for file: {FileName}", fileInfo.FileName);
+    }
+
+    public void RemoveFile(string fileName)
+    {
+        if (_fileCache.TryRemove(fileName, out _))
+        {
+            logger.LogInformation("File removed from cache: {FileName}", fileName);
+        }
+    }
+
+    public IEnumerable<FileInfoDto> GetCachedFiles()
+    {
+        // Return files sorted by creation date (newest first)
+        return _fileCache.Values.OrderByDescending(f => f.CreatedAt);
+    }
+    
     public bool ChecksumsMatch(string checksum1, string checksum2)
     {
+        if (string.IsNullOrEmpty(checksum1) || string.IsNullOrEmpty(checksum2)) return false;
+        
         bool match = checksum1.Equals(checksum2, StringComparison.OrdinalIgnoreCase);
         
         if (!match)
         {
-            logger.LogWarning("Checksum mismatch detected - Checksum1: {Checksum1}, Checksum2: {Checksum2}", 
-                checksum1, checksum2);
-            
-        }
-        else
-        {
-            logger.LogDebug("Comparing checksums - Match: {Match}, Checksum1: {Checksum1}, Checksum2: {Checksum2}", 
-                match, checksum1, checksum2);
+            logger.LogWarning("Checksum mismatch detected.");
         }
         return match;
     }
