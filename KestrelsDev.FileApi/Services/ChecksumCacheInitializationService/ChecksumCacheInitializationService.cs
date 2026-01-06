@@ -33,9 +33,8 @@ public class ChecksumCacheInitializationService(
             {
                 string checksum = await checksumService.CalculateChecksumFromFileAsync(file.FullName);
 
-                FileInfoDto fileInfo = new FileInfoDto(
+                FileInfoDto fileInfo = new(
                     file.Name,
-                    Math.Round(file.Length / (1024.0 * 1024.0), 2),
                     file.Length,
                     checksum,
                     file.CreationTime
