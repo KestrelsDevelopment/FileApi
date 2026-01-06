@@ -2,7 +2,7 @@ using KestrelsDev.FileApi.Services.ConfigurationService;
 using KestrelsDev.FileApi.Services.ChecksumService;
 using KestrelsDev.FileApi.Services.FileStorageService;
 using KestrelsDev.FileApi.Middleware;
-using KestrelsDev.FileApi.Services.ChecksumBackgroundService;
+using KestrelsDev.FileApi.Services.ChecksumCacheInitializationService;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +12,7 @@ builder.Services.AddSingleton<IConfigurationService, ConfigurationService>();
 
 builder.Services.AddSingleton<IChecksumService, ChecksumService>();
 
-builder.Services.AddHostedService<ChecksumBackgroundService>();
+builder.Services.AddHostedService<ChecksumCacheInitializationService>();
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 

@@ -7,7 +7,7 @@ namespace KestrelsDev.FileApi.Services.ChecksumCacheInitializationService;
 public class ChecksumCacheInitializationService(
     IConfigurationService configService,
     IChecksumService checksumService,
-    ILogger<ChecksumBackgroundService> logger) : BackgroundService, IChecksumBackgroundService
+    ILogger<ChecksumCacheInitializationService> logger) : BackgroundService, IChecksumCacheInitializationService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
