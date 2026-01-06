@@ -2,9 +2,9 @@ using KestrelsDev.FileApi.Models;
 using KestrelsDev.FileApi.Services.ChecksumService;
 using KestrelsDev.FileApi.Services.ConfigurationService;
 
-namespace KestrelsDev.FileApi.Services.ChecksumBackgroundService;
+namespace KestrelsDev.FileApi.Services.ChecksumCacheInitializationService;
 
-public class ChecksumBackgroundService(
+public class ChecksumCacheInitializationService(
     IConfigurationService configService,
     IChecksumService checksumService,
     ILogger<ChecksumBackgroundService> logger) : BackgroundService, IChecksumBackgroundService
