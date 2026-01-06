@@ -3,8 +3,9 @@ using KestrelsDev.FileApi.Services.ChecksumService;
 using KestrelsDev.FileApi.Services.FileStorageService;
 using KestrelsDev.FileApi.Middleware;
 using KestrelsDev.FileApi.Services.ChecksumCacheInitializationService;
+using KestrelsDev.KestrelsCore.Web;
 
-WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+WebApplicationBuilder builder = KestrelsCoreApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
