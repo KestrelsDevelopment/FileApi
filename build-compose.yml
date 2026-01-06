@@ -2,8 +2,8 @@
   kestrelsdev.fileapi:
     image: ghcr.io/kestrelsdevelopment/kestrelsdev.fileapi
     build:
-      context: ./KestrelsDev.FileApi
-      dockerfile: ./Dockerfile
+      context: .
+      dockerfile: ./KestrelsDev.FileApi/Dockerfile
     environment:
       - API_UPLOAD_PSK=changeme
       - API_UPLOAD_PATH=/files
