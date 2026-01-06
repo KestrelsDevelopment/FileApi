@@ -20,15 +20,15 @@ public class ChecksumBackgroundService(
             return;
         }
 
-        DirectoryInfo dirInfo = new(uploadPath);
-        FileInfo[] files = dirInfo.GetFiles();
+        string[] files = Directory.GetFiles(uploadPath);
 
         logger.LogInformation("Found {Count} files to process for checksum cache.", files.Length);
 
-        foreach (FileInfo file in files)
+        foreach (string filePath in files)
         {
             if (stoppingToken.IsCancellationRequested) break;
 
+            FileInfo file = new(filePath);
             try
             {
                 string checksum = await checksumService.CalculateChecksumFromFileAsync(file.FullName);
