@@ -3,7 +3,7 @@ namespace KestrelsDev.FileApi.Services.ConfigurationService;
 public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfigurationService
 {
     private string? _uploadPath;
-    public string? UploadPath => _uploadPath ??= ReadUploadPath();
+    public string UploadPath => _uploadPath ??= ReadUploadPath();
 
     private string? _uploadPsk;
     public string UploadPsk => _uploadPsk ??= ReadUploadPsk();
@@ -11,7 +11,7 @@ public class ConfigurationService(ILogger<ConfigurationService> logger) : IConfi
     private int? _maxFiles;
     public int MaxFiles => _maxFiles ??= ReadMaxFiles();
 
-    private string? ReadUploadPath()
+    private string ReadUploadPath()
     {
         string? uploadPath = Environment.GetEnvironmentVariable("API_UPLOAD_PATH");
         if (string.IsNullOrWhiteSpace(uploadPath))
