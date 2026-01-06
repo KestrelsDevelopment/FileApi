@@ -61,9 +61,8 @@ public class FileController(
         {
             string finalChecksum = calculatedChecksum ?? await checksumService.CalculateChecksumFromFileAsync(Path.Combine(configService.UploadPath, fileName));
 
-            FileInfoDto newFileInfo = new FileInfoDto(
+            FileInfoDto newFileInfo = new(
                 fileName,
-                Math.Round(file.Length / (1024.0 * 1024.0), 2),
                 file.Length,
                 finalChecksum,
                 DateTime.Now
