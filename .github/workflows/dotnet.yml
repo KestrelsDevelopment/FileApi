@@ -8,4 +8,4 @@ jobs:
     ci:
         uses: KestrelsDevelopment/Workflows/.github/workflows/dotnet-test.yml@main 
         with: 
-            dotnet-version: "9.x"
+            dotnet_version: "10.x"
