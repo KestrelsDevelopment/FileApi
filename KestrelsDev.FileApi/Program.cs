@@ -17,9 +17,28 @@ builder.Services.AddHostedService<ChecksumCacheInitializationService>();
 
 builder.Services.AddScoped<IFileStorageService, FileStorageService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("DevCorsPolicy", policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 WebApplication app = builder.Build();
 
 app.UseHttpsRedirection();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors("DevCorsPolicy");
+}
+else
+{
+    app.UseCors();
+}
 
 app.UseWhen(context => context.Request.Path.StartsWithSegments("/upload"), appBuilder =>
 {
